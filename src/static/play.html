@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width" />
+
+    <style>
+      body { font-family: Tahoma, Geneva, sans-serif; }
+    </style>
+
+    <!-- colyseus.js client -->
+    <script type="text/javascript" src="https://unpkg.com/colyseus.js@^0.14.0/dist/colyseus.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.2/jquery.min.js" ></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css" >
+    <style type="text/css">
+      .player {
+        width: 100px;
+        height: 100px;
+        position: absolute;
+        padding-top: 24px;
+        box-sizing: border-box;
+        left: 0;
+        top: 0;
+        margin: auto;
+        border: 3px solid green;
+        padding: 10px;        
+      }
+      body {
+        font-size: 14px;
+        /* background: rgb(2,0,36);
+        background: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(47,47,208,1) 0%, rgba(0,212,255,1) 100%);         */
+      }
+
+
+      .btn {
+        padding-top: 0.75em;
+        padding-bottom: 0.75em;
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      .btn-group-flex {
+        display: flex;
+      }
+      .btn-group-flex .btn {
+        flex-grow: 1;
+      }
+      .btn-group-flex .btn:not(:first-child) {
+        border-left: none !important;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+      }
+      .btn-group-flex .btn:not(:last-child) {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+       
+    </style>
+
+  </head>
+  <body>
+    <main class="container">
+      <header class="text-md-center">
+        <h1 class="p-t-1">Rock, Paper or Scissors?</h1>
+        <p>Choose your option and click play! Can you win?</p>
+      </header>
+      <hr>
+      <section class="row">
+
+        <div class="col-sm-6 col-md-4 col-md-offset-2">
+          <strong>Player Id: </strong><span id="playerId"></span>
+          <div class="btn-group-flex m-b-1" role="group" aria-label="Your Choice Buttons" id="chooseBtns">
+            <button type="button" class="btn btn-secondary btn-choice" id="btnRock">Rock</button>
+            <button type="button" class="btn btn-secondary btn-choice" id="btnPaper">Paper</button>
+            <button type="button" class="btn btn-secondary btn-choice" id="btnScissors">Scissors</button>
+          </div>
+          <div class="card" id="yourCard">
+            <img class="card-img-top img-fluid p-a-1" src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/201958/Rock-Paper-Scissors-04-04.png" alt="Card image cap" id="yourChoiceImg">
+            <div class="card-footer text-muted">
+              <strong>Your Choice: </strong><span id="yourChoiceText"></span>
+            </div>
+          </div>
+          <div class="alert alert-info" role="alert" id="yourScore"><strong>Your Score!</strong><span class="m-l-1"></span></div>
+        </div>
+        <div class="col-sm-6 col-md-4">
+          Player 2
+          <button type="button" class="btn btn-block btn-secondary m-b-1" id="letsPlay">Play</button>
+          <div class="card" id="yourCard">
+            <img class="card-img-top img-fluid p-a-1" src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/201958/Rock-Paper-Scissors-04-04.png" alt="Card image cap" id="myChoiceImg">
+            <div class="card-footer text-muted">
+              <strong>My Choice: </strong><span id="myChoiceText"></span>
+            </div>
+          </div>
+          <div class="alert alert-info" role="alert" id="myScore"><strong>Opponent Score!</strong><span class="m-l-1"></span></div>
+        </div>
+        <div class="col-xs-12 col-md-8 col-md-offset-2">
+          <button type="button" class="btn btn-lg btn-block btn-secondary m-b-1" id="startOver">Start Over</button>
+        </div>
+      </section>
+    </main>
+    
+    <div class="modal fade" id="resultModal" data-backdrop="static" data-keyboard="false">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button> -->
+            <h4 class="modal-title">Alert!</h4>
+          </div>
+          <div class="modal-body" id="alertResult">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-block btn-secondary" data-dismiss="modal" id="closeReset">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+  </body>
+
+
+    <script>
+    // Get elements to update
+    const yourImgToUpdate = $('#yourChoiceImg');
+    const yourTextToUpdate = $('#yourChoiceText');
+    const myImgToUpdate = $('#myChoiceImg');
+    const myTextToUpdate = $('#myChoiceText');
+    const alertResult = $('#alertResult');
+    const alertModal = $('#resultModal');
+    const alertYourScore = $('#yourScore');
+    const alertMyScore = $('#myScore');
+    const recordYourScore = $('#yourScore span');
+    const recordMyScore = $('#myScore span');
+    const startOver = $('#startOver');
+    const letsPlay = $('#letsPlay');
+
+    // Store images in object
+    let images = {
+      rock: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/201958/Rock-Paper-Scissors-01.png",
+      paper: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/201958/Rock-Paper-Scissors-02.png",
+      scissors: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/201958/Rock-Paper-Scissors-03.png",
+      question: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/201958/Rock-Paper-Scissors-04-04.png"
+    };
+
+    // Store alert components in object
+    let alertDiv = {
+      loose: '<div class="alert alert-danger" role="alert"><strong>You lose! </strong> Your opponent chose: <span id="opponentChoice"></span></div>',
+      win: '<div class="alert alert-success" role="alert"><strong>Wahoo you win!</strong> Your opponent chose: <span id="opponentChoice"></span></div>',
+      draw: '<div class="alert alert-info" role="alert"><strong>Draw!</strong> Your opponent chose: <span id="opponentChoice"></span></div>'
+    };
+
+    // Track player score
+    let yourScore = 0;
+    let myScore = 0;
+
+    // Function to update images
+    const updateImg = (img, val) => {
+      switch(val){
+        case "Rock":
+          img.attr('src', images.rock);
+          break;
+        case "Paper":
+          img.attr('src', images.paper);
+          break;
+        case "Scissors":
+          img.attr('src', images.scissors);
+          break;
+        default:
+          img.attr('src', images.question);
+      }
+    };
+
+    // Reset image to question mark
+    const resetImg = () => {
+      myImgToUpdate.attr("src", images.question);
+      myTextToUpdate.text("");
+      yourImgToUpdate.attr("src", images.question);
+      yourTextToUpdate.text("");
+    };
+
+    // Function to update the alert content
+    const updateAlert = (alert) => {
+      alertResult.append(alert);
+      alertModal.modal('show');
+    };
+
+    // Function to update the score
+    const updateScore = (score) => {
+      (score === "yourScore") ? yourScore += 1 : myScore += 1;
+    };
+
+    // Combine alert and score functions
+    const alertScore = (theAlert, theScore) => {
+      updateAlert(theAlert);
+      updateScore(theScore);
+    };
+
+    // Disable the play button function until an option is chosen
+    const disablePlay = () => {
+      (yourTextToUpdate.text() === "") ? letsPlay.attr('disabled', true) : letsPlay.attr('disabled', false);
+    };
+
+    const resetPlayBtn = () => {
+      $('#alertResult').children().remove();
+      $('#letsPlay').text("Play");
+    };
+
+    // Make the game
+    $(document).ready( function() {
+
+      // Disable play button on page load.
+      $('#letsPlay').attr('disabled', true);
+
+      // Reset the choices, images and play
+      // button state back to default.
+      $('#closeReset').click( function() {
+
+        
+        resetImg();
+        resetPlayBtn();
+        disablePlay();
+        recordMyScore.text(myScore);
+        recordYourScore.text(yourScore);
+
+        if (myScore > yourScore) {
+          alertMyScore.removeClass('alert-info alert-danger').addClass('alert-success');
+          alertYourScore.removeClass('alert-info alert-success').addClass('alert-danger');
+        } else if (myScore < yourScore) {
+          alertMyScore.removeClass('alert-info alert-success').addClass('alert-danger');
+          alertYourScore.removeClass('alert-info alert-danger').addClass('alert-success');
+        } else {
+          alertMyScore.removeClass('alert-success alert-danger').addClass('alert-info');
+          alertYourScore.removeClass('alert-danger alert-success').addClass('alert-info');
+        }
+
+      });
+
+      // Capture user choice info and enable
+      // play button.
+      $('.btn-choice').click( function() {
+
+        var value = $(this).text();
+        // room.send('update-player', {choice: value})
+        yourTextToUpdate.text(value);
+        updateImg(yourImgToUpdate, value);
+        disablePlay();
+
+      });
+
+      // Capture comp choice info and start
+      // to play the game.
+      $('#letsPlay').click( function() {
+
+        if ($(this).text() === "Reset") {
+
+          resetImg();
+          resetPlayBtn();
+          disablePlay();
+
+        } else {
+
+          var userChoice = $('#yourChoiceText').text();
+          // var computerChoice = Math.random();
+
+          room.send("update-player", { choice: userChoice, score: null, ready: true });
+          alertModal.modal('show');
+          alertResult.append(`<div class="alert alert-info" role="alert"><strong>Waiting for opponent's choice</strong></div>`)
+
+          // if (computerChoice < 0.34) {
+          //   computerChoice = "Rock";
+          // } else if (computerChoice <= 0.67) {
+          //   computerChoice = "Paper";
+          // } else {
+          //   computerChoice = "Scissors";
+          // };
+
+          // myTextToUpdate.text(computerChoice);
+          // updateImg(myImgToUpdate, computerChoice);
+
+          // if (userChoice === computerChoice) {
+          //   updateAlert(alertDiv.draw);
+          // } else if (userChoice === "Rock") {
+          //   if (computerChoice === "Scissors") {
+          //     alertScore(alertDiv.win, "yourScore");
+          //   } else {
+          //     alertScore(alertdiv.loose, "myScore");
+          //   }
+          // } else if (userChoice === "Paper") {
+          //   if (computerChoice === "Rock") {
+          //     alertScore(alertDiv.win, "yourScore");
+          //   } else {
+          //     alertScore(alertDiv.loose, "myScore");
+          //   }
+          // } else if (userChoice === "Scissors") {
+          //   if (computerChoice === "Rock") {
+          //     alertScore(alertDiv.loose, "myScore");
+          //   } else {
+          //     alertScore(alertDiv.win, "yourScore");
+          //   }
+          // }
+
+          $(this).text("Reset");
+
+          recordMyScore.text(myScore);
+          recordYourScore.text(yourScore);
+
+          if (myScore > yourScore) {
+            alertMyScore.removeClass('alert-info alert-danger').addClass('alert-success');
+            alertYourScore.removeClass('alert-info alert-success').addClass('alert-danger');
+          } else if (myScore < yourScore) {
+            alertMyScore.removeClass('alert-info alert-success').addClass('alert-danger');
+            alertYourScore.removeClass('alert-info alert-danger').addClass('alert-success');
+          } else {
+            alertMyScore.removeClass('alert-success alert-danger').addClass('alert-info');
+            alertYourScore.removeClass('alert-danger alert-success').addClass('alert-info');
+          }
+
+        };
+
+      });
+
+      $('#startOver').click( function() {
+
+        room.send("received", {received: false})
+        resetImg();
+        resetPlayBtn();
+        
+        yourScore = 0;
+        myScore = 0;
+
+        recordMyScore.text(myScore);
+        recordYourScore.text(yourScore);
+
+        alertMyScore.removeClass('alert-success alert-danger');
+        alertYourScore.removeClass('alert-success alert-danger');
+        alertMyScore.addClass('alert-info');
+        alertYourScore.addClass('alert-info');
+
+      });
+
+    });      
+    
+    
+    </script>
+    <script>
+
+      var host = window.document.location.host.replace(/:.*/, '');
+
+      var client = new Colyseus.Client(location.protocol.replace("http", "ws") + "//" + host + (location.port ? ':' + location.port : ''));
+      var room;
+      var gameId = "<%= gameId %>";
+      var join_gameId = "<%= join_gameId %>"
+
+      if (gameId){
+        client.create("state_handler", {gameId: gameId}).then(room_instance => {
+        console.log("Creating new game session")
+        room = room_instance
+        $('#playerId').text(room.sessionId)
+
+        // listen to patches coming from the server
+        room.state.players.onAdd = function (player, sessionId) {
+            
+            alertResult.append(`<div class="alert alert-success" role="alert"><strong>Player joined!</strong> ${sessionId}</div>`)
+            alertModal.modal('show')
+                         
+            player.onChange = function (changes) {         
+            }      
+        }  
+
+        room.onMessage("result", (data) => {
+
+          var userChoice = $('#yourChoiceText').text();
+          room.send('update-player', { choice: userChoice, score: null, ready: false })
+
+          var {winner, opponentChoice, results, s_ids} = data          
+          var opponentArray = s_ids.filter(e => e !== room.sessionId)          
+          var opponentChoice = results[opponentArray[0]]
+
+          if (!winner){
+              updateAlert(alertDiv.draw);
+              $("#opponentChoice").text(opponentChoice)
+          }
+          if (room.sessionId === winner){
+              alertScore(alertDiv.win, "yourScore");
+              $("#opponentChoice").text(opponentChoice)
+          }
+          if (room.sessionId !== winner && winner){
+              alertScore(alertDiv.loose, "myScore");
+              $("#opponentChoice").text(opponentChoice)
+          }
+        });    
+        
+      }
+      );        
+      }else if (join_gameId){
+        client.joinById(join_gameId).then(room_instance => {
+            console.log("Joiining existing game session")
+            room = room_instance
+            $('#playerId').text(room.sessionId)
+            // listen to patches coming from the server
+            room.state.players.onAdd = function (player, sessionId) {
+                
+                alertResult.append(`<div class="alert alert-success" role="alert"><strong>Player joined!</strong> ${sessionId}</div>`)
+                alertModal.modal('show')         
+
+                player.onChange = function (changes) {
+                }
+                
+                
+            }
+            room.onMessage("result", (data) => {
+              var userChoice = $('#yourChoiceText').text();
+              room.send('update-player', { choice: userChoice, score: null, ready: false })
+
+              var {winner, opponentChoice, results, s_ids} = data
+              var opponentArray = s_ids.filter(e => e !== room.sessionId)              
+              var opponentChoice = results[opponentArray[0]]
+              if (!winner){
+                  updateAlert(alertDiv.draw);
+                  $("#opponentChoice").text(opponentChoice)
+              }
+              if (room.sessionId === winner){
+                  alertScore(alertDiv.win, "yourScore");
+                  $("#opponentChoice").text(opponentChoice)
+              }
+              if (room.sessionId !== winner && winner){
+                  alertScore(alertDiv.loose, "myScore");
+                  $("#opponentChoice").text(opponentChoice)
+              }
+
+            
+            });                
+
+        }).catch(e =>{
+          window.location.href = '/';
+        });        
+      }else{
+        window.location.href = '/';
+      }
+
+
+    </script>      
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/js/bootstrap.min.js" ></script>  
+</html>
